@@ -60,9 +60,10 @@ def run_terminal_silent(command, loader_instance=None, auto_approve=False):
     safe_cmds = [
         "ls", "echo", "whoami", "pwd", "date", "neofetch", "cat", "grep", 
         "git --version", "python --version", "node -v", "npm -v", "wget --version", 
-        "curl --version", "pkg search", "pkg list-installed", "which", "type"
+        "curl --version", "pkg search", "pkg list-installed", "which", "type", "wget"
     ]
-    is_safe = any(command.startswith(cmd) for cmd in safe_cmds) or "--version" in command or "-v" in command
+    # Otomatis anggap aman jika ada flag --version atau -v
+    is_safe = any(command.strip() == cmd or command.startswith(cmd + " ") for cmd in safe_cmds) or "--version" in command or "-v" in command
     
     if not is_safe:
         if not auto_approve:
