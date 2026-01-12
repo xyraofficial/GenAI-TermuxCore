@@ -68,10 +68,11 @@ def clean_json(text):
 def query_ai(user_input, tool_output=None):
     headers = {"Authorization": f"Bearer {state['api_key']}", "Content-Type": "application/json"}
     messages = [{"role": "system", "content": get_system_prompt()}]
-    messages.extend(state["history"][-8:])
+    # Optimasi history: ambil 10 pesan terakhir agar tidak boros token
+    messages.extend(state["history"][-10:])
     if tool_output: messages.append({"role": "user", "content": f"Tool Output:\n{tool_output}\n\nProceed."})
     else: messages.append({"role": "user", "content": user_input})
-    payload = {"model": CURRENT_MODEL, "messages": messages, "temperature": 0.3, "response_format": {"type": "json_object"}}
+    payload = {"model": state.get("model", CURRENT_MODEL), "messages": messages, "temperature": 0.3, "response_format": {"type": "json_object"}}
     try:
         response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
@@ -83,11 +84,24 @@ def query_ai(user_input, tool_output=None):
 def main():
     load_config(); setup(); show_header()
     while True:
-        console.print("\n[bold cyan]USER ❯[/bold cyan]", end=" ")
+        theme_color = state.get("theme", "cyan")
+        console.print(f"\n[bold {theme_color}]USER ❯[/bold {theme_color}]", end=" ")
         try: user_input = input()
         except EOFError: break
         if user_input.lower() in ["exit", "quit"]: break
         if not user_input.strip(): continue
+        
+        # Fitur Ganti Model & Tema via Chat
+        if user_input.lower().startswith("set model "):
+            new_model = user_input.split(" ")[-1]
+            state["model"] = new_model
+            console.print(f"[green]✔ Model diganti ke: {new_model}[/green]")
+            continue
+        elif user_input.lower().startswith("set theme "):
+            new_theme = user_input.split(" ")[-1]
+            state["theme"] = new_theme
+            console.print(f"[green]✔ Tema diganti ke: {new_theme}[/green]")
+            continue
         
         state["history"].append({"role": "user", "content": user_input})
         agree_words = ["y", "yes", "ya", "ok", "oke", "gas", "lanjut", "install", "mau", "boleh"]
