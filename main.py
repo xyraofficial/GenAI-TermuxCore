@@ -51,20 +51,20 @@ def query_ai(user_input, tool_output=None):
         
     headers = {"Authorization": f"Bearer {state['api_key']}", "Content-Type": "application/json"}
     system_prompt = """
-You are NEXUS V27, a highly advanced Autonomous AI Agent.
-Your goal is to help the user by executing commands on their Termux device.
+You are NEXUS V28, a highly advanced Autonomous AI Agent specialized in Termux environments.
+Your goal is to assist the user by executing commands on their Termux device effectively and safely.
 
-CORE INSTRUCTIONS:
-1.  **Script Creation**: If the user asks to create a script (Python, Bash, etc.), use the `run_terminal` tool with `echo` or `cat` to write the file.
-2.  **No Execution**: NEVER execute a script that you have just created. Only create the file.
-3.  **Hidden Code**: Do NOT display the full source code of the script in your chat response. Only provide a summary of what the script does and the filename.
-4.  **Direct Tool Use**: For other actions, use `run_terminal` IMMEDIATELY to get data.
-5.  **Termux Native**: Only use commands available in Termux.
-6.  **Interaction**: Acknowledge the request and summarize results without showing raw code unless specifically asked.
+CAPABILITIES & CONSTRAINTS:
+1.  **Termux-API Support**: You can use `termux-api` commands (e.g., `termux-notification`, `termux-vibrate`, `termux-battery-status`, `termux-toast`).
+2.  **No Dumpsys**: DO NOT use the `dumpsys` command as it is often restricted or unavailable in standard Termux environments. Use `termux-api` alternatives or `/proc` / `sysfs` queries if needed.
+3.  **Script Creation**: If the user asks for a script, use `run_terminal` with `cat << 'EOF' > filename` for multi-line stability.
+4.  **No Immediate Execution**: Create scripts but do not run them in the same turn unless explicitly requested.
+5.  **Direct Tool Use**: Use `run_terminal` IMMEDIATELY to gather data or perform actions.
+6.  **Response Format**: You MUST respond in valid JSON format.
 
 RESPONSE FORMAT (STRICT JSON):
-{ "action": "tool", "tool_name": "run_terminal", "args": "echo 'print(\\"hello\\")' > script.py" }
-{ "action": "reply", "content": "Saya telah membuat script 'script.py' yang akan mencetak pesan hello." }
+{ "action": "tool", "tool_name": "run_terminal", "args": "termux-toast 'Hello from Nexus'" }
+{ "action": "reply", "content": "I have sent a toast notification to your device." }
 """
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(state["history"][-10:])
@@ -89,7 +89,7 @@ RESPONSE FORMAT (STRICT JSON):
     except Exception as e:
         return json.dumps({"action": "reply", "content": f"AI Error: {str(e)}"})
 
-# UI Template - FULLY RESPONSIVE iOS/ChatGPT Style
+# UI Template - FULLY RESPONSIVE iOS/ChatGPT Style with Markdown and Highlight support
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="id">
@@ -97,29 +97,20 @@ HTML_TEMPLATE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Nexus AI</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <style>
         :root {
-            --bg-color: #ffffff;
-            --chat-bg: #f4f4f7;
-            --text-color: #1a1a1a;
-            --ai-bubble: #ffffff;
-            --user-bubble: #007aff;
+            --bg-color: #0d1117;
+            --chat-bg: #010409;
+            --text-color: #c9d1d9;
+            --ai-bubble: #161b22;
+            --user-bubble: #238636;
             --user-text: #ffffff;
-            --accent-color: #007aff;
-            --border-color: #e5e5ea;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-color: #1c1c1e;
-                --chat-bg: #000000;
-                --text-color: #ffffff;
-                --ai-bubble: #2c2c2e;
-                --user-bubble: #0a84ff;
-                --user-text: #ffffff;
-                --accent-color: #0a84ff;
-                --border-color: #38383a;
-            }
+            --accent-color: #2ea043;
+            --border-color: #30363d;
+            --status-online: #3fb950;
         }
 
         * { 
@@ -133,51 +124,65 @@ HTML_TEMPLATE = """
             height: 100%;
             width: 100%;
             overflow: hidden;
-            position: fixed; /* Prevent bouncing/scrolling on mobile */
-        }
-
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            position: fixed;
             background-color: var(--bg-color);
             color: var(--text-color);
-            display: flex;
-            flex-direction: column;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
+
+        body { display: flex; flex-direction: column; }
 
         .header {
             padding: env(safe-area-inset-top) 20px 10px;
             background-color: var(--bg-color);
             border-bottom: 1px solid var(--border-color);
-            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             flex-shrink: 0;
         }
 
-        .header h1 { margin: 0; font-size: 16px; font-weight: 600; }
-        .header p { margin: 2px 0 0; font-size: 11px; opacity: 0.6; }
+        .status-container {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--status-online);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--status-online);
+        }
+
+        .header h1 { font-size: 18px; font-weight: 700; color: #fff; }
 
         #chat-container {
             flex: 1;
             overflow-y: auto;
-            padding: 15px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 16px;
             background-color: var(--chat-bg);
             -webkit-overflow-scrolling: touch;
         }
 
         .message {
-            max-width: 85%;
-            padding: 10px 14px;
-            border-radius: 18px;
+            max-width: 90%;
+            padding: 12px 16px;
+            border-radius: 12px;
             font-size: 15px;
-            line-height: 1.4;
+            line-height: 1.6;
             word-wrap: break-word;
-            animation: fadeIn 0.2s ease-out;
+            animation: fadeIn 0.3s ease-out;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(5px); }
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
@@ -185,58 +190,73 @@ HTML_TEMPLATE = """
             align-self: flex-end;
             background-color: var(--user-bubble);
             color: var(--user-text);
-            border-bottom-right-radius: 4px;
+            border-bottom-right-radius: 2px;
         }
 
         .ai-message {
             align-self: flex-start;
             background-color: var(--ai-bubble);
             color: var(--text-color);
-            border-bottom-left-radius: 4px;
+            border-bottom-left-radius: 2px;
             border: 1px solid var(--border-color);
+        }
+
+        .ai-message pre {
+            background: #0d1117;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 10px 0;
+            border: 1px solid var(--border-color);
+        }
+
+        .ai-message code {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 13px;
         }
 
         .tool-output {
             font-family: "SF Mono", monospace;
             font-size: 11px;
-            background: rgba(0,0,0,0.1);
-            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
             border-radius: 8px;
-            margin-top: 5px;
+            margin-top: 10px;
             white-space: pre-wrap;
             border: 1px solid var(--border-color);
-            max-height: 150px;
+            max-height: 200px;
             overflow: auto;
+            color: #8b949e;
         }
 
         .input-wrapper {
             background-color: var(--bg-color);
             border-top: 1px solid var(--border-color);
-            padding: 10px 15px calc(10px + env(safe-area-inset-bottom));
+            padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
             flex-shrink: 0;
         }
 
         .input-container {
             display: flex;
-            gap: 10px;
-            align-items: center;
-            background-color: var(--chat-bg);
+            gap: 12px;
+            align-items: flex-end;
+            background-color: var(--ai-bubble);
             border: 1px solid var(--border-color);
-            border-radius: 24px;
-            padding: 4px 12px;
+            border-radius: 12px;
+            padding: 8px 12px;
         }
 
         #user-input {
             flex: 1;
             background: transparent;
             border: none;
-            color: var(--text-color);
+            color: #fff;
             font-size: 16px;
             outline: none;
             resize: none;
-            min-height: 40px;
-            max-height: 120px;
-            padding: 8px 0;
+            min-height: 24px;
+            max-height: 150px;
+            padding: 4px 0;
             line-height: 24px;
         }
 
@@ -244,26 +264,23 @@ HTML_TEMPLATE = """
             background-color: var(--accent-color);
             color: white;
             border: none;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
             cursor: pointer;
-            transition: opacity 0.2s;
+            transition: all 0.2s;
         }
 
-        #send-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-
-        #send-btn svg { width: 16px; height: 16px; fill: white; }
+        #send-btn:hover { background-color: #2c974b; transform: scale(1.05); }
+        #send-btn:active { transform: scale(0.95); }
+        #send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
         .loading-dots { display: flex; gap: 4px; padding: 4px 0; }
-        .dot { width: 5px; height: 5px; background: currentColor; border-radius: 50%; animation: pulse 1.4s infinite; opacity: 0.4; }
+        .dot { width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: pulse 1.4s infinite; opacity: 0.4; }
         .dot:nth-child(2) { animation-delay: 0.2s; }
         .dot:nth-child(3) { animation-delay: 0.4s; }
         @keyframes pulse { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 1; transform: scale(1.1); } }
@@ -271,26 +288,40 @@ HTML_TEMPLATE = """
 </head>
 <body>
     <div class="header">
-        <h1>Nexus AI</h1>
-        <p>Assistant Cerdas Termux</p>
+        <h1>Nexus V28</h1>
+        <div class="status-container">
+            <div class="status-dot"></div>
+            <span>Connected</span>
+        </div>
     </div>
 
     <div id="chat-container">
         <div class="message ai-message">
-            Halo! Saya Nexus. Ada yang bisa saya bantu?
+            Halo! Saya **Nexus V28**. Asisten cerdas Termux Anda siap membantu.
         </div>
     </div>
 
     <div class="input-wrapper">
         <div class="input-container">
-            <textarea id="user-input" placeholder="Tanya sesuatu..." rows="1"></textarea>
+            <textarea id="user-input" placeholder="Tulis perintah atau pertanyaan..." rows="1"></textarea>
             <button id="send-btn" disabled>
-                <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
         </div>
     </div>
 
     <script>
+        marked.setOptions({
+            highlight: function(code, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    return hljs.highlight(code, { language: lang }).value;
+                }
+                return hljs.highlightAuto(code).value;
+            },
+            breaks: true,
+            gfm: true
+        });
+
         const chatContainer = document.getElementById('chat-container');
         const userInput = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
@@ -298,7 +329,15 @@ HTML_TEMPLATE = """
         function addMessage(text, isUser = false, toolOutput = null) {
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
-            msgDiv.textContent = text;
+            
+            if (isUser) {
+                msgDiv.textContent = text;
+            } else {
+                msgDiv.innerHTML = marked.parse(text);
+                msgDiv.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+            }
             
             if (toolOutput) {
                 const toolDiv = document.createElement('div');
@@ -353,25 +392,16 @@ HTML_TEMPLATE = """
         
         userInput.oninput = function() {
             this.style.height = 'auto';
-            const newHeight = Math.min(this.scrollHeight, 120);
-            this.style.height = newHeight + 'px';
+            this.style.height = Math.min(this.scrollHeight, 150) + 'px';
             sendBtn.disabled = !this.value.trim();
         };
 
         userInput.onkeydown = (e) => {
-            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+            if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
             }
         };
-
-        // Fix for iOS keyboard covering input
-        userInput.addEventListener('focus', () => {
-            setTimeout(() => {
-                window.scrollTo(0, 0);
-                document.body.scrollTop = 0;
-            }, 50);
-        });
     </script>
 </body>
 </html>
