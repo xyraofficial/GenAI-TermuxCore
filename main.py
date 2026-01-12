@@ -32,14 +32,16 @@ state = {
 
 def load_config():
     # Mengambil API key langsung dari environment variable Replit (Secret)
-    state["api_key"] = os.environ.get("GROQ_API_KEY", "")
-    if not state["api_key"]:
-        # Fallback ke file config jika secret tidak ada
-        if os.path.exists(CONFIG_FILE):
-            try:
-                with open(CONFIG_FILE, 'r') as f:
-                    state["api_key"] = json.load(f).get("api_key", "")
-            except: pass
+    # Jika tidak ada di env, ambil dari nexus_config.json
+    api_key = os.environ.get("GROQ_API_KEY", "")
+    
+    if not api_key and os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                api_key = json.load(f).get("api_key", "")
+        except: pass
+    
+    state["api_key"] = api_key
 
 load_config()
 
@@ -436,6 +438,8 @@ def index():
 
 @app.route('/chat', methods=['POST'])
 def chat():
+    # Selalu pastikan config terbaru di-load setiap ada request chat
+    load_config()
     data = request.get_json()
     user_msg = data.get("message")
     state["history"].append({"role": "user", "content": user_msg})
