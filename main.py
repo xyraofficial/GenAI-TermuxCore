@@ -116,15 +116,24 @@ def setup_remote_termux():
     console.clear()
     console.print(Panel("[bold cyan]TERMUX REMOTE SETUP[/bold cyan]", style="cyan"))
     
-    console.print("\n[yellow]Gunakan script ini di Termux untuk menjalankan listener:[/yellow]")
-    from modules.remote import start_termux_listener
-    console.print(Panel(start_termux_listener(), title="Termux Listener Script (Python)", style="green"))
-    
-    server_url = Prompt.ask("\nMasukkan URL Server Termux (misal: http://192.168.1.5:8080 atau URL ngrok)", default="http://localhost:8080")
+    # Auto-detect Replit URL for the internal server
+    import subprocess
+    try:
+        domain = subprocess.check_output("env | grep REPL_SLUG | cut -d'=' -f2", shell=True).decode().strip()
+        user = subprocess.check_output("env | grep REPL_OWNER | cut -d'=' -f2", shell=True).decode().strip()
+        server_url = f"https://{domain}.{user}.replit.app"
+    except:
+        server_url = "http://localhost:5000"
+
     save_to_memory("termux_server_url", server_url)
     
-    console.print(f"\n[green]✔ Server URL diatur ke: {server_url}[/green]")
-    console.print("[dim]Pastikan Termux Anda berada dalam jaringan yang sama atau menggunakan layanan tunnel.[/dim]")
+    console.print(f"\n[green]✔ Server Flask otomatis dibuat dan diaktifkan![/green]")
+    console.print(f"[green]✔ URL Otomatis: {server_url}[/green]")
+    console.print("\n[yellow]Membuka browser...[/yellow]")
+    
+    # In Replit, the webview opens automatically if a port is bound.
+    # We just inform the user.
+    time.sleep(2)
     input("\nTekan Enter untuk kembali ke menu...")
 
 def clean_json(text):

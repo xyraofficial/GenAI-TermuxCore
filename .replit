@@ -29,6 +29,10 @@ author = "agent"
 task = "workflow.run"
 args = "Run Nexus Agent"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Termux Listener Server"
+
 [[workflows.workflow]]
 name = "Run Nexus Agent"
 author = "agent"
@@ -39,6 +43,18 @@ outputType = "console"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python main.py"
+
+[[workflows.workflow]]
+name = "Termux Listener Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python termux_server.py"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [[ports]]
 localPort = 5000
