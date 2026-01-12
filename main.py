@@ -111,12 +111,21 @@ def setup():
 def setup_remote_termux():
     console.clear()
     console.print(Panel("[bold cyan]TERMUX REMOTE SETUP[/bold cyan]", style="cyan"))
-    server_url = Prompt.ask("Masukkan URL Server Termux (misal: http://ip-anda:8080)", default="http://localhost:8080")
+    
+    # Get Replit Domain automatically
+    import subprocess
+    try:
+        domain = subprocess.check_output("env | grep REPL_SLUG | cut -d'=' -f2", shell=True).decode().strip()
+        user = subprocess.check_output("env | grep REPL_OWNER | cut -d'=' -f2", shell=True).decode().strip()
+        default_url = f"https://{domain}.{user}.repl.co"
+    except:
+        default_url = "http://localhost:5000"
+
+    server_url = Prompt.ask("Masukkan URL Server Termux", default=default_url)
     save_to_memory("termux_server_url", server_url)
     
-    console.print("\n[yellow]Gunakan script ini di Termux untuk menjalankan listener:[/yellow]")
-    from modules.remote import start_termux_listener
-    console.print(Panel(start_termux_listener(), title="Listener Script", style="green"))
+    console.print(f"\n[green]✔ Server URL diatur ke: {server_url}[/green]")
+    console.print("\n[yellow]Server sekarang berjalan otomatis di background Replit.[/yellow]")
     input("\nTekan Enter untuk kembali ke menu...")
 
 def clean_json(text):
