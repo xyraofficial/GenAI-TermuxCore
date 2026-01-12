@@ -88,7 +88,7 @@ RESPONSE FORMAT (STRICT JSON):
     except Exception as e:
         return json.dumps({"action": "reply", "content": f"AI Error: {str(e)}"})
 
-# UI Template - iOS/ChatGPT Style with Fix for Mobile Input
+# UI Template - FULLY RESPONSIVE iOS/ChatGPT Style
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="id">
@@ -121,20 +121,30 @@ HTML_TEMPLATE = """
             }
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            position: fixed; /* Prevent bouncing/scrolling on mobile */
+        }
+
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
-            margin: 0;
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
         }
 
         .header {
-            padding: 10px 20px;
+            padding: env(safe-area-inset-top) 20px 10px;
             background-color: var(--bg-color);
             border-bottom: 1px solid var(--border-color);
             text-align: center;
@@ -162,6 +172,12 @@ HTML_TEMPLATE = """
             font-size: 15px;
             line-height: 1.4;
             word-wrap: break-word;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .user-message {
@@ -192,45 +208,58 @@ HTML_TEMPLATE = """
             overflow: auto;
         }
 
-        .input-container {
-            padding: 10px 15px;
+        .input-wrapper {
             background-color: var(--bg-color);
             border-top: 1px solid var(--border-color);
+            padding: 10px 15px calc(10px + env(safe-area-inset-bottom));
+            flex-shrink: 0;
+        }
+
+        .input-container {
             display: flex;
             gap: 10px;
             align-items: center;
-            flex-shrink: 0;
-            padding-bottom: max(10px, env(safe-area-inset-bottom));
+            background-color: var(--chat-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 4px 12px;
         }
 
         #user-input {
             flex: 1;
-            background-color: var(--chat-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            padding: 8px 15px;
+            background: transparent;
+            border: none;
             color: var(--text-color);
             font-size: 16px;
             outline: none;
             resize: none;
             min-height: 40px;
-            max-height: 100px;
+            max-height: 120px;
+            padding: 8px 0;
+            line-height: 24px;
         }
 
         #send-btn {
             background-color: var(--accent-color);
             color: white;
             border: none;
-            width: 34px;
-            height: 34px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            cursor: pointer;
+            transition: opacity 0.2s;
         }
 
-        #send-btn svg { width: 18px; height: 18px; fill: white; }
+        #send-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        #send-btn svg { width: 16px; height: 16px; fill: white; }
 
         .loading-dots { display: flex; gap: 4px; padding: 4px 0; }
         .dot { width: 5px; height: 5px; background: currentColor; border-radius: 50%; animation: pulse 1.4s infinite; opacity: 0.4; }
@@ -251,11 +280,13 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-    <div class="input-container">
-        <textarea id="user-input" placeholder="Tanya sesuatu..." rows="1"></textarea>
-        <button id="send-btn">
-            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-        </button>
+    <div class="input-wrapper">
+        <div class="input-container">
+            <textarea id="user-input" placeholder="Tanya sesuatu..." rows="1"></textarea>
+            <button id="send-btn" disabled>
+                <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+        </div>
     </div>
 
     <script>
@@ -283,8 +314,11 @@ HTML_TEMPLATE = """
         async function handleSend() {
             const text = userInput.value.trim();
             if (!text) return;
+            
             userInput.value = '';
             userInput.style.height = 'auto';
+            sendBtn.disabled = true;
+            
             addMessage(text, true);
             
             const loading = document.createElement('div');
@@ -315,8 +349,28 @@ HTML_TEMPLATE = """
         }
 
         sendBtn.onclick = handleSend;
-        userInput.onkeydown = (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
-        userInput.oninput = function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; };
+        
+        userInput.oninput = function() {
+            this.style.height = 'auto';
+            const newHeight = Math.min(this.scrollHeight, 120);
+            this.style.height = newHeight + 'px';
+            sendBtn.disabled = !this.value.trim();
+        };
+
+        userInput.onkeydown = (e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+                e.preventDefault();
+                handleSend();
+            }
+        };
+
+        // Fix for iOS keyboard covering input
+        userInput.addEventListener('focus', () => {
+            setTimeout(() => {
+                window.scrollTo(0, 0);
+                document.body.scrollTop = 0;
+            }, 50);
+        });
     </script>
 </body>
 </html>
