@@ -82,17 +82,56 @@ def query_ai(user_input, tool_output=None):
     except Exception as e: 
         return json.dumps({"action": "reply", "content": f"AI Error: {str(e)}"})
 
-def main():
-    load_config(); setup(); show_header()
+def main_menu():
+    while True:
+        console.clear()
+        show_header()
+        console.print(Panel("[bold white]NEXUS MAIN MENU[/bold white]", style="bold blue", box=box.DOUBLE))
+        console.print("  [cyan]1.[/cyan] Run AI (Chat Mode)")
+        console.print("  [cyan]2.[/cyan] Set Model (Groq)")
+        console.print("  [cyan]3.[/cyan] Set Theme (Color)")
+        console.print("  [cyan]4.[/cyan] Exit")
+        
+        choice = Prompt.ask("\n[white]Pilih menu[/white]", choices=["1", "2", "3", "4"], default="1")
+        
+        if choice == "1":
+            run_chat()
+        elif choice == "2":
+            models = ["llama-3.3-70b-versatile", "llama3-8b-8192", "mixtral-8x7b-32768", "gemma2-9b-it"]
+            console.print("\n[bold yellow]Daftar Model Tersedia:[/bold yellow]")
+            for i, m in enumerate(models, 1): console.print(f"  [cyan]{i}.[/cyan] {m}")
+            m_idx = Prompt.ask("\nPilih model", choices=[str(i) for i in range(1, len(models)+1)], default="1")
+            state["model"] = models[int(m_idx)-1]
+            console.print(f"[green]✔ Model diatur ke: {state['model']}[/green]")
+            time.sleep(1)
+        elif choice == "3":
+            themes = ["cyan", "magenta", "red", "green", "yellow", "blue", "white"]
+            console.print("\n[bold yellow]Daftar Tema Tersedia:[/bold yellow]")
+            for i, t in enumerate(themes, 1): console.print(f"  [cyan]{i}.[/cyan] {t}")
+            t_idx = Prompt.ask("\nPilih tema", choices=[str(i) for i in range(1, len(themes)+1)], default="1")
+            state["theme"] = themes[int(t_idx)-1]
+            console.print(f"[green]✔ Tema diatur ke: {state['theme']}[/green]")
+            time.sleep(1)
+        elif choice == "4":
+            break
+
+def run_chat():
+    console.clear()
+    show_header()
+    console.print(f"[dim yellow]Model: {state.get('model', CURRENT_MODEL)} | Theme: {state.get('theme', 'cyan')}[/dim yellow]")
+    console.print("[dim white]Ketik 'menu' untuk kembali ke menu utama.[/dim white]\n")
+    
     while True:
         theme_color = state.get("theme", "cyan")
         console.print(f"\n[bold {theme_color}]USER ❯[/bold {theme_color}]", end=" ")
         try: user_input = input()
         except EOFError: break
-        if user_input.lower() in ["exit", "quit"]: break
+        
+        if user_input.lower() == "menu": break
+        if user_input.lower() in ["exit", "quit"]: sys.exit()
         if not user_input.strip(): continue
         
-        # Fitur Ganti Model & Tema via Chat
+        # Tetap dukung perintah set langsung jika user mau
         if user_input.lower().startswith("set model "):
             new_model = user_input.split(" ")[-1]
             state["model"] = new_model
@@ -113,8 +152,7 @@ def main():
         raw_res = query_ai(user_input)
         loader.stop()
         
-        try: 
-            response = json.loads(raw_res)
+        try: response = json.loads(raw_res)
         except Exception as e: 
             console.print(f"[dim red]Debug: AI Response is not valid JSON. Content: {raw_res}[/dim red]")
             response = {"action": "reply", "content": raw_res}
@@ -134,7 +172,6 @@ def main():
 
             state["history"].append({"role": "assistant", "content": json.dumps(response)})
             
-            # --- FIX: Jika tool output kosong atau error, tetap lapor ke AI ---
             loader = HackerLoader("Finalizing")
             loader.start()
             final_raw = query_ai(user_input, tool_output=output)
@@ -156,6 +193,9 @@ def main():
             if "content" in response:
                 console.print(Panel(Markdown(response["content"]), title="NEXUS", border_style="cyan"))
             state["history"].append({"role": "assistant", "content": json.dumps(response)})
+
+def main():
+    load_config(); setup(); main_menu()
 
 if __name__ == "__main__":
     main()
