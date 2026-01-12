@@ -24,16 +24,57 @@ def run_remote_command(command, server_url):
 
 def start_termux_listener(port=8080):
     """
-    Starts a simple Flask-like listener (using standard libraries or simple http server)
-    to receive commands from this agent and execute them on Termux.
+    Script ini harus dijalankan di dalam Termux.
+    Akan membuka Web UI untuk kontrol remote.
     """
-    # This is a placeholder for the server script that should be run ON Termux
     server_script = f'''
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template_string
 import subprocess
 import os
 
 app = Flask(__name__)
+
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Termux Remote Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {{ background: #121212; color: #0f0; font-family: monospace; padding: 20px; }}
+        .terminal {{ border: 1px solid #0f0; padding: 10px; height: 300px; overflow: auto; background: #000; }}
+        input {{ width: 100%; background: #000; border: 1px solid #0f0; color: #0f0; padding: 10px; margin-top: 10px; }}
+        button {{ background: #0f0; color: #000; border: none; padding: 10px; width: 100%; margin-top: 10px; cursor: pointer; }}
+    </style>
+</head>
+<body>
+    <h2>NEXUS TERMUX REMOTE</h2>
+    <div class="terminal" id="out">Server ready...</div>
+    <input type="text" id="cmd" placeholder="Enter command...">
+    <button onclick="run()">EXECUTE</button>
+
+    <script>
+        async function run() {{
+            const cmd = document.getElementById('cmd').value;
+            const out = document.getElementById('out');
+            out.innerHTML += `\\n❯ ${{cmd}}`;
+            const res = await fetch('/execute', {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{command: cmd}})
+            }});
+            const data = await res.json();
+            out.innerHTML += `\\n${{data.output || data.error}}`;
+            out.scrollTop = out.scrollHeight;
+        }}
+    </script>
+</body>
+</html>
+"""
+
+@app.route('/')
+def index():
+    return render_template_string(HTML_TEMPLATE)
 
 @app.route('/execute', methods=['POST'])
 def execute():
@@ -46,6 +87,7 @@ def execute():
         return jsonify({{"error": str(e)}}), 500
 
 if __name__ == "__main__":
+    print(f"\\n[!] Server jalan di: http://127.0.0.1:{port}")
     app.run(host="0.0.0.0", port={port})
 '''
     return server_script
