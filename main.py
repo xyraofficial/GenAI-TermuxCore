@@ -55,23 +55,21 @@ You are NEXUS V27, a highly advanced Autonomous AI Agent.
 Your goal is to help the user by executing commands on their Termux device.
 
 CORE INSTRUCTIONS:
-1.  **Interaction**: You MUST communicate with the user. If they ask for something, acknowledge it.
-2.  **Autonomous Operations**: Use the `run_terminal` tool to perform actions like installing, removing, or checking files.
-3.  **Termux Specifics**: 
-    - Use `pkg install -y <pkg>` for installations.
-    - Use `pkg uninstall -y <pkg>` for removals.
-    - Always add `-y` to skip confirmation prompts.
-4.  **Reporting**: After a tool finishes, summarize the result for the user.
+1.  **Direct Tool Use**: If the user asks for information or an action, use `run_terminal` IMMEDIATELY to get data.
+2.  **Termux Native**: Only use commands available in Termux (e.g., `pkg`, `termux-battery-status`, `ls`, `cat`). 
+3.  **No Excuses**: Do NOT say "perintah tidak tersedia" before actually trying it or checking for alternatives. If `dumpsys` fails, try `termux-battery-status` or read from `/sys/class/power_supply/`.
+4.  **Smart Alternatives**: Always look for the most native way to get information in Termux.
+5.  **Interaction**: Acknowledge the user's request and provide a clear summary of the result.
 
 RESPONSE FORMAT (STRICT JSON):
-{ "action": "tool", "tool_name": "run_terminal", "args": "pkg install -y wget" }
-{ "action": "reply", "content": "Saya sedang menginstal wget untuk Anda..." }
+{ "action": "tool", "tool_name": "run_terminal", "args": "termux-battery-status" }
+{ "action": "reply", "content": "Checking battery status for you..." }
 """
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(state["history"][-10:])
     
     if tool_output:
-        messages.append({"role": "user", "content": f"Tool Output:\n{tool_output}\n\nProceed."})
+        messages.append({"role": "user", "content": f"Tool Output:\n{tool_output}\n\nProceed with final answer or next step."})
     else:
         messages.append({"role": "user", "content": user_input})
         
@@ -90,86 +88,258 @@ RESPONSE FORMAT (STRICT JSON):
     except Exception as e:
         return json.dumps({"action": "reply", "content": f"AI Error: {str(e)}"})
 
-# UI Template
+# UI Template - iOS/ChatGPT Style
 HTML_TEMPLATE = """
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-    <title>NEXUS AI REMOTE</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Nexus AI</title>
     <style>
-        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; padding: 20px; margin: 0; overflow-x: hidden; }
-        .container { max-width: 900px; margin: auto; }
-        .header { text-align: center; border: 1px solid #0f0; padding: 10px; margin-bottom: 20px; box-shadow: 0 0 5px #0f0; }
-        .terminal { border: 1px solid #0f0; padding: 15px; height: 500px; overflow: auto; background: #050505; margin-bottom: 15px; box-shadow: 0 0 10px #0f0; font-size: 14px; }
-        .input-area { display: flex; gap: 10px; align-items: center; }
-        input { flex: 1; background: #000; border: 1px solid #0f0; color: #0f0; padding: 12px; font-family: inherit; outline: none; }
-        button { background: #0f0; color: #000; border: none; padding: 12px 25px; cursor: pointer; font-weight: bold; font-family: inherit; }
-        .prompt { color: #0f0; font-weight: bold; }
-        .user-msg { color: #0af; margin-top: 10px; }
-        .ai-msg { color: #0f0; margin-top: 5px; }
-        .loading { display: inline-block; margin-left: 10px; color: #fa0; animation: blink 1s infinite; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
-        .status-tag { color: #fa0; font-weight: bold; margin-right: 5px; }
-        .success-tag { color: #0f0; }
-        .error-tag { color: #f00; }
+        :root {
+            --bg-color: #ffffff;
+            --chat-bg: #f4f4f7;
+            --text-color: #1a1a1a;
+            --ai-bubble: #ffffff;
+            --user-bubble: #007aff;
+            --user-text: #ffffff;
+            --accent-color: #007aff;
+            --border-color: #e5e5ea;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #1c1c1e;
+                --chat-bg: #000000;
+                --text-color: #ffffff;
+                --ai-bubble: #2c2c2e;
+                --user-bubble: #0a84ff;
+                --user-text: #ffffff;
+                --accent-color: #0a84ff;
+                --border-color: #38383a;
+            }
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            padding: 15px 20px;
+            background-color: rgba(var(--bg-color), 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            text-align: center;
+        }
+
+        .header h1 { margin: 0; font-size: 17px; font-weight: 600; }
+        .header p { margin: 2px 0 0; font-size: 12px; opacity: 0.6; }
+
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background-color: var(--chat-bg);
+        }
+
+        .message {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 20px;
+            font-size: 15px;
+            line-height: 1.4;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            align-self: flex-end;
+            background-color: var(--user-bubble);
+            color: var(--user-text);
+            border-bottom-right-radius: 4px;
+        }
+
+        .ai-message {
+            align-self: flex-start;
+            background-color: var(--ai-bubble);
+            color: var(--text-color);
+            border-bottom-left-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .tool-output {
+            font-family: "SF Mono", "Monaco", "Inconsolata", monospace;
+            font-size: 12px;
+            background: rgba(0,0,0,0.05);
+            padding: 8px;
+            border-radius: 8px;
+            margin-top: 8px;
+            white-space: pre-wrap;
+            border: 1px solid var(--border-color);
+        }
+
+        .input-container {
+            padding: 15px 20px;
+            background-color: var(--bg-color);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        #user-input {
+            flex: 1;
+            background-color: var(--chat-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 22px;
+            padding: 10px 18px;
+            color: var(--text-color);
+            font-size: 16px;
+            outline: none;
+            max-height: 120px;
+            resize: none;
+        }
+
+        #send-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s;
+        }
+
+        #send-btn:active { transform: scale(0.9); }
+        #send-btn svg { width: 20px; height: 20px; fill: white; }
+
+        .loading-dots { display: flex; gap: 4px; padding: 4px 0; }
+        .dot { 
+            width: 6px; height: 6px; background: currentColor; 
+            border-radius: 50%; opacity: 0.4;
+            animation: pulse 1.4s infinite; 
+        }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes pulse { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 1; transform: scale(1.1); } }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h2 style="margin:0;">NEXUS V27 - AI REMOTE</h2>
-            <div style="font-size:12px; margin-top:5px;">Professional Termux Assistant</div>
-        </div>
-        <div class="terminal" id="out">
-            <div>[SYSTEM] Nexus AI Engine Ready.</div>
-        </div>
-        <div class="input-area">
-            <span class="prompt">❯</span>
-            <input type="text" id="cmd" placeholder="Tanya sesuatu..." onkeypress="if(event.key === 'Enter') send()">
-            <button onclick="send()">SEND</button>
+    <div class="header">
+        <h1>Nexus AI</h1>
+        <p>Assistant Cerdas Termux</p>
+    </div>
+
+    <div id="chat-container">
+        <div class="message ai-message">
+            Halo! Saya Nexus. Ada yang bisa saya bantu di perangkat Termux Anda hari ini?
         </div>
     </div>
 
-    <script>
-        const out = document.getElementById('out');
-        const cmdInput = document.getElementById('cmd');
+    <div class="input-container">
+        <textarea id="user-input" placeholder="Tanya sesuatu..." rows="1"></textarea>
+        <button id="send-btn">
+            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+    </div>
 
-        function appendMsg(html) {
-            const div = document.createElement('div');
-            div.innerHTML = html;
-            out.appendChild(div);
-            out.scrollTop = out.scrollHeight;
-            return div;
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+
+        function addMessage(text, isUser = false, toolOutput = null) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+            msgDiv.textContent = text;
+            
+            if (toolOutput) {
+                const toolDiv = document.createElement('div');
+                toolDiv.className = 'tool-output';
+                toolDiv.textContent = toolOutput;
+                msgDiv.appendChild(toolDiv);
+            }
+            
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return msgDiv;
         }
 
-        async function send() {
-            const val = cmdInput.value.trim();
-            if (!val) return;
+        function addLoading() {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message ai-message loading-bubble';
+            msgDiv.innerHTML = `<div class="loading-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return msgDiv;
+        }
+
+        async function handleSend() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            userInput.value = '';
+            userInput.style.height = 'auto';
+            addMessage(text, true);
             
-            appendMsg(`<div class="user-msg"><span class="prompt">USER ❯</span> ${val}</div>`);
-            cmdInput.value = '';
-            
-            const loader = appendMsg(`<div class="ai-msg"><span class="prompt">NEXUS ❯</span> <span class="loading">AI WORKING...</span></div>`);
-            
+            const loading = addLoading();
+
             try {
                 const res = await fetch('/chat', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({message: val})
+                    body: JSON.stringify({message: text})
                 });
                 const data = await res.json();
-                loader.remove();
+                loading.remove();
                 
                 if (data.replies) {
-                    data.replies.forEach(reply => {
-                        appendMsg(`<div class="ai-msg"><span class="prompt">NEXUS ❯</span> ${reply}</div>`);
+                    data.replies.forEach((reply, index) => {
+                        const out = (index === data.replies.length - 1) ? data.tool_output : null;
+                        addMessage(reply, false, out);
                     });
                 }
             } catch (err) {
-                loader.innerHTML = `<div style="color:red">Error: ${err.message}</div>`;
+                loading.remove();
+                addMessage('Maaf, terjadi kesalahan koneksi.', false);
             }
         }
+
+        sendBtn.addEventListener('click', handleSend);
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+            }
+        });
+
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
     </script>
 </body>
 </html>
@@ -220,7 +390,10 @@ def chat():
             state["history"].append({"role": "assistant", "content": ai_res_raw})
             break
             
-    return jsonify({"replies": replies})
+    return jsonify({
+        "replies": replies,
+        "tool_output": current_output
+    })
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
