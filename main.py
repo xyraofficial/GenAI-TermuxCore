@@ -11,6 +11,16 @@ API_URL = "https://api.groq.com/openai/v1/chat/completions"
 API_KEY = os.environ.get("GROQ_API_KEY")
 MODEL = "llama-3.3-70b-versatile"
 
+@app.route("/", methods=["GET"])
+def index():
+    return jsonify({
+        "message": "AI Proxy Server is running",
+        "endpoints": {
+            "chat": "/chat (POST)",
+            "health": "/health (GET)"
+        }
+    })
+
 @app.route("/chat", methods=["POST"])
 def chat():
     if not API_KEY:
