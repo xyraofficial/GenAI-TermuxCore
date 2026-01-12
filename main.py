@@ -98,17 +98,6 @@ def load_config():
         try:
             with open(CONFIG_FILE, 'r') as f: state["api_key"] = json.load(f).get("api_key", "")
         except: pass
-    
-    # Auto-set Termux server URL if not set
-    if not get_from_memory("termux_server_url"):
-        try:
-            import subprocess
-            domain = subprocess.check_output("env | grep REPL_SLUG | cut -d'=' -f2", shell=True).decode().strip()
-            user = subprocess.check_output("env | grep REPL_OWNER | cut -d'=' -f2", shell=True).decode().strip()
-            url = f"https://{domain}.{user}.replit.app"
-            save_to_memory("termux_server_url", url)
-        except:
-            pass
 
 def save_config():
     with open(CONFIG_FILE, 'w') as f: json.dump({"api_key": state["api_key"]}, f)
@@ -123,19 +112,15 @@ def setup_remote_termux():
     console.clear()
     console.print(Panel("[bold cyan]TERMUX REMOTE SETUP[/bold cyan]", style="cyan"))
     
-    # Get Replit Domain automatically
-    import subprocess
-    try:
-        domain = subprocess.check_output("env | grep REPL_SLUG | cut -d'=' -f2", shell=True).decode().strip()
-        user = subprocess.check_output("env | grep REPL_OWNER | cut -d'=' -f2", shell=True).decode().strip()
-        server_url = f"https://{domain}.{user}.replit.app"
-    except:
-        server_url = "http://localhost:5000"
-
+    console.print("\n[yellow]Gunakan script ini di Termux untuk menjalankan listener:[/yellow]")
+    from modules.remote import start_termux_listener
+    console.print(Panel(start_termux_listener(), title="Termux Listener Script (Python)", style="green"))
+    
+    server_url = Prompt.ask("\nMasukkan URL Server Termux (misal: http://192.168.1.5:8080 atau URL ngrok)", default="http://localhost:8080")
     save_to_memory("termux_server_url", server_url)
     
-    console.print(f"\n[green]✔ Server URL otomatis diatur ke: {server_url}[/green]")
-    console.print("\n[yellow]Server sekarang berjalan otomatis di background Replit.[/yellow]")
+    console.print(f"\n[green]✔ Server URL diatur ke: {server_url}[/green]")
+    console.print("[dim]Pastikan Termux Anda berada dalam jaringan yang sama atau menggunakan layanan tunnel.[/dim]")
     input("\nTekan Enter untuk kembali ke menu...")
 
 def clean_json(text):
