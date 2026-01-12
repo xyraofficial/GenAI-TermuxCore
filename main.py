@@ -1,7 +1,10 @@
 import os
 import sys
 import json
+import re
 import requests
+import threading
+import time
 from core.engine import (
     show_header, run_terminal_silent, create_file_silent, 
     ask_choice, console
@@ -51,6 +54,17 @@ def setup():
         state["api_key"] = Prompt.ask("Paste API Key")
         save_config()
 
+def clean_json(text):
+    text = text.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```json\s*", "", text)
+        text = re.sub(r"^```\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+    # Tambahkan pembersihan karakter non-JSON di awal/akhir
+    text = re.sub(r'^[^{]*', '', text)
+    text = re.sub(r'[^}]*$', '', text)
+    return text
+
 def query_ai(user_input, tool_output=None):
     headers = {"Authorization": f"Bearer {state['api_key']}", "Content-Type": "application/json"}
     messages = [{"role": "system", "content": get_system_prompt()}]
@@ -60,8 +74,11 @@ def query_ai(user_input, tool_output=None):
     payload = {"model": CURRENT_MODEL, "messages": messages, "temperature": 0.3, "response_format": {"type": "json_object"}}
     try:
         response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
-        return response.json()['choices'][0]['message']['content']
-    except Exception as e: return json.dumps({"action": "reply", "content": f"Error: {e}"})
+        response.raise_for_status()
+        raw = response.json()['choices'][0]['message']['content']
+        return clean_json(raw)
+    except Exception as e: 
+        return json.dumps({"action": "reply", "content": f"AI Error: {str(e)}"})
 
 def main():
     load_config(); setup(); show_header()
