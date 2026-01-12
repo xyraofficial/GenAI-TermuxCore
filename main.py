@@ -6,12 +6,13 @@ import json
 import datetime
 import requests
 import re
-import time
+from rich.console import Console
 
 # Add path for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 app = Flask(__name__)
+console = Console()
 
 # --- CONFIGURATION ---
 CONFIG_FILE = "nexus_config.json"
@@ -51,18 +52,18 @@ def query_ai(user_input, tool_output=None):
     headers = {"Authorization": f"Bearer {state['api_key']}", "Content-Type": "application/json"}
     system_prompt = """
 You are NEXUS V27, a highly advanced Autonomous AI Agent.
-Your goal is to help the user by executing commands and managing files on their Termux device.
+Your goal is to help the user by executing commands on their Termux device.
 
 CORE INSTRUCTIONS:
-1.  **Direct Execution**: If the user asks to "install", "remove", "update", "hapus", or perform any system action, use the `run_terminal` tool IMMEDIATELY. Do not make excuses.
-2.  **File Management**: Use `create_file` to save content as a file. When creating scripts, DO NOT show the full code in your reply, only provide the file information.
-3.  **Detailed Info**: When a file is created, you MUST provide: Filename, Size, Type, and Location.
-4.  **No Excuses**: Do NOT say "saya tidak dapat menghapus" or similar. You have full permission to use `rm`, `pkg`, etc.
+1.  **Direct Tool Use**: If the user asks for information or an action, use `run_terminal` IMMEDIATELY to get data.
+2.  **Termux Native**: Only use commands available in Termux (e.g., `pkg`, `termux-battery-status`, `ls`, `cat`). 
+3.  **No Excuses**: Do NOT say "perintah tidak tersedia" before actually trying it.
+4.  **Autonomous Response**: Your output must be strictly JSON.
 5.  **Interaction**: Acknowledge the request and summarize results.
 
 RESPONSE FORMAT (STRICT JSON):
-{ "action": "tool", "tool_name": "run_terminal", "args": "rm filename.py" }
-{ "action": "reply", "content": "Saya telah menghapus file tersebut untuk Anda." }
+{ "action": "tool", "tool_name": "run_terminal", "args": "termux-battery-status" }
+{ "action": "reply", "content": "Checking battery status for you..." }
 """
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(state["history"][-10:])
@@ -87,7 +88,7 @@ RESPONSE FORMAT (STRICT JSON):
     except Exception as e:
         return json.dumps({"action": "reply", "content": f"AI Error: {str(e)}"})
 
-# UI Template - iOS/ChatGPT Style
+# UI Template - FULLY RESPONSIVE iOS/ChatGPT Style
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="id">
@@ -120,59 +121,191 @@ HTML_TEMPLATE = """
             }
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
-        html, body { height: 100%; width: 100%; overflow: hidden; position: fixed; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; }
-        .header { padding: env(safe-area-inset-top) 20px 10px; background-color: var(--bg-color); border-bottom: 1px solid var(--border-color); text-align: center; flex-shrink: 0; }
-        .header h1 { font-size: 16px; font-weight: 600; }
-        .header p { font-size: 11px; opacity: 0.6; }
-        #chat-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; background-color: var(--chat-bg); }
-        .message { max-width: 85%; padding: 10px 14px; border-radius: 18px; font-size: 15px; line-height: 1.4; word-wrap: break-word; animation: fadeIn 0.2s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .user-message { align-self: flex-end; background-color: var(--user-bubble); color: var(--user-text); border-bottom-right-radius: 4px; }
-        .ai-message { align-self: flex-start; background-color: var(--ai-bubble); color: var(--text-color); border-bottom-left-radius: 4px; border: 1px solid var(--border-color); }
-        
-        .file-info { background: rgba(var(--accent-color), 0.1); border: 1px solid var(--accent-color); border-radius: 12px; padding: 10px; margin-top: 8px; font-size: 13px; }
-        .file-info b { color: var(--accent-color); }
-        
-        .progress-box { margin-top: 5px; font-size: 12px; color: #fa0; }
-        .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,170,0,.3); border-radius: 50%; border-top-color: #fa0; animation: spin 1s ease-in-out infinite; margin-right: 5px; vertical-align: middle; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+            margin: 0;
+            padding: 0;
+        }
 
-        .input-wrapper { background-color: var(--bg-color); border-top: 1px solid var(--border-color); padding: 10px 15px calc(10px + env(safe-area-inset-bottom)); flex-shrink: 0; }
-        .input-container { display: flex; gap: 10px; align-items: center; background-color: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 24px; padding: 4px 12px; }
-        #user-input { flex: 1; background: transparent; border: none; color: var(--text-color); font-size: 16px; outline: none; resize: none; min-height: 40px; max-height: 120px; padding: 8px 0; }
-        #send-btn { background-color: var(--accent-color); color: white; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            position: fixed; /* Prevent bouncing/scrolling on mobile */
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: env(safe-area-inset-top) 20px 10px;
+            background-color: var(--bg-color);
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .header h1 { margin: 0; font-size: 16px; font-weight: 600; }
+        .header p { margin: 2px 0 0; font-size: 11px; opacity: 0.6; }
+
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background-color: var(--chat-bg);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .message {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 15px;
+            line-height: 1.4;
+            word-wrap: break-word;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-message {
+            align-self: flex-end;
+            background-color: var(--user-bubble);
+            color: var(--user-text);
+            border-bottom-right-radius: 4px;
+        }
+
+        .ai-message {
+            align-self: flex-start;
+            background-color: var(--ai-bubble);
+            color: var(--text-color);
+            border-bottom-left-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .tool-output {
+            font-family: "SF Mono", monospace;
+            font-size: 11px;
+            background: rgba(0,0,0,0.1);
+            padding: 8px;
+            border-radius: 8px;
+            margin-top: 5px;
+            white-space: pre-wrap;
+            border: 1px solid var(--border-color);
+            max-height: 150px;
+            overflow: auto;
+        }
+
+        .input-wrapper {
+            background-color: var(--bg-color);
+            border-top: 1px solid var(--border-color);
+            padding: 10px 15px calc(10px + env(safe-area-inset-bottom));
+            flex-shrink: 0;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background-color: var(--chat-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 4px 12px;
+        }
+
+        #user-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-size: 16px;
+            outline: none;
+            resize: none;
+            min-height: 40px;
+            max-height: 120px;
+            padding: 8px 0;
+            line-height: 24px;
+        }
+
+        #send-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        #send-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
         #send-btn svg { width: 16px; height: 16px; fill: white; }
+
+        .loading-dots { display: flex; gap: 4px; padding: 4px 0; }
+        .dot { width: 5px; height: 5px; background: currentColor; border-radius: 50%; animation: pulse 1.4s infinite; opacity: 0.4; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes pulse { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 1; transform: scale(1.1); } }
     </style>
 </head>
 <body>
-    <div class="header"><h1>Nexus AI</h1><p>Assistant Cerdas Termux</p></div>
-    <div id="chat-container"><div class="message ai-message">Halo! Saya Nexus. Ada yang bisa saya bantu hari ini?</div></div>
-    <div class="input-wrapper"><div class="input-container">
-        <textarea id="user-input" placeholder="Tanya sesuatu..." rows="1"></textarea>
-        <button id="send-btn"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
-    </div></div>
+    <div class="header">
+        <h1>Nexus AI</h1>
+        <p>Assistant Cerdas Termux</p>
+    </div>
+
+    <div id="chat-container">
+        <div class="message ai-message">
+            Halo! Saya Nexus. Ada yang bisa saya bantu?
+        </div>
+    </div>
+
+    <div class="input-wrapper">
+        <div class="input-container">
+            <textarea id="user-input" placeholder="Tanya sesuatu..." rows="1"></textarea>
+            <button id="send-btn" disabled>
+                <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+        </div>
+    </div>
+
     <script>
         const chatContainer = document.getElementById('chat-container');
         const userInput = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
 
-        function addMessage(text, isUser = false, fileData = null) {
+        function addMessage(text, isUser = false, toolOutput = null) {
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
             msgDiv.textContent = text;
-            if (fileData) {
-                const infoDiv = document.createElement('div');
-                infoDiv.className = 'file-info';
-                infoDiv.innerHTML = `
-                    <div><b>📄 Filename:</b> ${fileData.name}</div>
-                    <div><b>📏 Size:</b> ${fileData.size}</div>
-                    <div><b>🏷️ Type:</b> ${fileData.type}</div>
-                    <div><b>📍 Location:</b> ${fileData.path}</div>
-                `;
-                msgDiv.appendChild(infoDiv);
+            
+            if (toolOutput) {
+                const toolDiv = document.createElement('div');
+                toolDiv.className = 'tool-output';
+                toolDiv.textContent = toolOutput;
+                msgDiv.appendChild(toolDiv);
             }
+            
             chatContainer.appendChild(msgDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
             return msgDiv;
@@ -181,18 +314,18 @@ HTML_TEMPLATE = """
         async function handleSend() {
             const text = userInput.value.trim();
             if (!text) return;
+            
             userInput.value = '';
+            userInput.style.height = 'auto';
+            sendBtn.disabled = true;
+            
             addMessage(text, true);
+            
             const loading = document.createElement('div');
             loading.className = 'message ai-message';
-            loading.innerHTML = '<div class="progress-box"><div class="spinner"></div><span id="p-text">AI Working...</span></div>';
+            loading.innerHTML = '<div class="loading-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
             chatContainer.appendChild(loading);
             chatContainer.scrollTop = chatContainer.scrollHeight;
-            
-            const pText = loading.querySelector('#p-text');
-            const steps = ["AI Working...", "Analyzing Request...", "Creating File...", "Verifying..."];
-            let sIdx = 0;
-            const interval = setInterval(() => { if(sIdx < steps.length) pText.textContent = steps[sIdx++]; }, 800);
 
             try {
                 const res = await fetch('/chat', {
@@ -201,22 +334,43 @@ HTML_TEMPLATE = """
                     body: JSON.stringify({message: text})
                 });
                 const data = await res.json();
-                clearInterval(interval);
                 loading.remove();
+                
                 if (data.replies) {
                     data.replies.forEach((reply, idx) => {
-                        const f = (idx === data.replies.length - 1) ? data.file_info : null;
-                        addMessage(reply, false, f);
+                        const out = (idx === data.replies.length - 1) ? data.tool_output : null;
+                        addMessage(reply, false, out);
                     });
                 }
             } catch (err) {
-                clearInterval(interval);
                 loading.remove();
                 addMessage('Gagal menghubungi AI.', false);
             }
         }
+
         sendBtn.onclick = handleSend;
-        userInput.onkeydown = (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
+        
+        userInput.oninput = function() {
+            this.style.height = 'auto';
+            const newHeight = Math.min(this.scrollHeight, 120);
+            this.style.height = newHeight + 'px';
+            sendBtn.disabled = !this.value.trim();
+        };
+
+        userInput.onkeydown = (e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+                e.preventDefault();
+                handleSend();
+            }
+        };
+
+        // Fix for iOS keyboard covering input
+        userInput.addEventListener('focus', () => {
+            setTimeout(() => {
+                window.scrollTo(0, 0);
+                document.body.scrollTop = 0;
+            }, 50);
+        });
     </script>
 </body>
 </html>
@@ -233,7 +387,6 @@ def chat():
     state["history"].append({"role": "user", "content": user_msg})
     
     current_output = None
-    file_info = None
     replies = []
     
     for _ in range(5):
@@ -245,35 +398,16 @@ def chat():
             
         if res.get("action") == "tool":
             tool_name = res.get("tool_name")
+            args = res.get("args")
             if res.get("content"): replies.append(res.get("content"))
             
             if tool_name == "run_terminal":
                 try:
-                    if ("pkg install" in args or "pkg remove" in args or "pkg uninstall" in args) and "-y" not in args:
-                        args += " -y"
+                    if ("pkg install" in args or "pkg remove" in args) and "-y" not in args: args += " -y"
                     proc = subprocess.run(args, shell=True, text=True, capture_output=True)
                     current_output = proc.stdout + proc.stderr
-                    if not current_output.strip():
-                        current_output = "[Success]"
-                except Exception as e:
-                    current_output = f"Error: {str(e)}"
-            
-            elif tool_name == "create_file":
-                fname = res.get("filename")
-                content = res.get("content")
-                try:
-                    with open(fname, "w") as f:
-                        f.write(content)
-                    size = os.path.getsize(fname)
-                    file_info = {
-                        "name": fname,
-                        "size": f"{size} bytes",
-                        "type": os.path.splitext(fname)[1],
-                        "path": os.path.abspath(fname)
-                    }
-                    current_output = f"File created: {fname}"
-                except Exception as e:
-                    current_output = f"Error: {str(e)}"
+                    if not current_output.strip(): current_output = "[Berhasil]"
+                except Exception as e: current_output = f"Error: {str(e)}"
             
             state["history"].append({"role": "assistant", "content": ai_res_raw})
         else:
@@ -281,7 +415,7 @@ def chat():
             state["history"].append({"role": "assistant", "content": ai_res_raw})
             break
             
-    return jsonify({"replies": replies, "file_info": file_info})
+    return jsonify({"replies": replies, "tool_output": current_output})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
