@@ -21,8 +21,11 @@ CAPABILITIES & CONSTRAINTS:
 3. Auto-Confirm: Always use the `-y` flag for package managers.
 
 RESPONSE FORMAT (STRICT JSON):
-- To run a command: { "action": "tool", "tool_name": "run_terminal", "args": "ls -la", "content": "Explain what you are doing" }
+- To run a command: { "action": "tool", "tool_name": "run_terminal", "args": "git --version", "content": "Checking git version as requested." }
 - To reply: { "action": "reply", "content": "Message to user" }
+
+INSTRUCTION:
+When a user asks to check something (like git version, storage, etc.), use the "tool" action with "run_terminal" to execute the appropriate command.
 """
 
 @app.route("/", methods=["GET", "POST"])
@@ -50,8 +53,14 @@ def chat():
         return jsonify({"error": "Invalid request. 'messages' field is required."}), 400
 
     messages = user_data["messages"]
-    # Ensure system prompt is present
-    if not any(m.get("role") == "system" for m in messages):
+    # Ensure system prompt is present and up to date
+    found_system = False
+    for i, m in enumerate(messages):
+        if m.get("role") == "system":
+            messages[i]["content"] = SYSTEM_PROMPT
+            found_system = True
+            break
+    if not found_system:
         messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT})
 
     headers = {
