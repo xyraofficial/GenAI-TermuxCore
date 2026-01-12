@@ -118,6 +118,8 @@ def main():
             loader.stop()
 
             state["history"].append({"role": "assistant", "content": json.dumps(response)})
+            
+            # --- FIX: Jika tool output kosong atau error, tetap lapor ke AI ---
             loader = HackerLoader("Finalizing")
             loader.start()
             final_raw = query_ai(user_input, tool_output=output)
@@ -130,6 +132,10 @@ def main():
             
             if "content" in final:
                 console.print(Panel(Markdown(final["content"]), title="NEXUS", border_style="cyan"))
+            if "copy_text" in final:
+                from core.engine import print_manual_copy
+                print_manual_copy(final["copy_text"])
+                
             state["history"].append({"role": "assistant", "content": json.dumps(final)})
         else:
             if "content" in response:

@@ -41,6 +41,10 @@ def sanitize_command(command):
     
     return command
 
+def print_manual_copy(text):
+    if text and text.strip():
+        console.print(Panel(f"{text}", title="⚠ RUN MANUALLY", border_style="yellow", box=box.DOUBLE))
+
 def run_terminal_silent(command, loader_instance=None, auto_approve=False):
     if command.strip() in ["clear", "cls"]:
         console.clear()
