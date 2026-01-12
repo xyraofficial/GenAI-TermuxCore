@@ -9,16 +9,40 @@ import subprocess
 
 # --- AUTO INSTALL DEPS ---
 def check_dependencies():
-    required = ["rich", "requests", "googlesearch-python"]
-    for pkg in required:
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.progress import Progress, SpinnerColumn, TextColumn
+    
+    temp_console = Console()
+    required = [
+        ("rich", "rich"),
+        ("requests", "requests"),
+        ("googlesearch-python", "googlesearch")
+    ]
+    
+    to_install = []
+    for pkg_name, import_name in required:
         try:
-            if pkg == "googlesearch-python":
-                import googlesearch
-            else:
-                __import__(pkg)
+            __import__(import_name)
         except ImportError:
-            print(f"[*] Installing dependency: {pkg}...")
-            subprocess.run([sys.executable, "-m", "pip", "install", pkg], check=True)
+            to_install.append(pkg_name)
+    
+    if to_install:
+        temp_console.print(Panel("[bold yellow]📦 System Update[/bold yellow]\n[white]Menyiapkan dependensi yang diperlukan...[/white]", style="cyan"))
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+        ) as progress:
+            for pkg in to_install:
+                task = progress.add_task(description=f"Installing {pkg}...", total=None)
+                try:
+                    subprocess.run([sys.executable, "-m", "pip", "install", pkg], 
+                                 check=True, capture_output=True)
+                    progress.update(task, description=f"[green]✔ {pkg} installed")
+                except Exception as e:
+                    progress.update(task, description=f"[red]✘ Gagal menginstal {pkg}")
+        temp_console.print("[bold green]✔ Semua dependensi siap![/bold green]\n")
 
 check_dependencies()
 

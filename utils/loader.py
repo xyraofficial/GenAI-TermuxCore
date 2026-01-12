@@ -32,6 +32,6 @@ class HackerLoader:
             while not self.stop_event.is_set():
                 dots = "." * (dot_idx % 4)
                 dot_idx += 1
-                text = Text(f"🤖 AI ANALISIS : {self.desc}{dots}", style="bold cyan")
+                text = Text(f"🤖 Agent : {self.desc}{dots}", style="bold cyan")
                 live.update(text)
                 time.sleep(0.15)
