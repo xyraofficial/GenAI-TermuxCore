@@ -80,6 +80,7 @@ CORE CAPABILITIES:
 2.  **Professional Scripting**: When asked to create a script, do NOT just show the code. Use the `create_file` tool to save it as a usable file (e.g., `.py`, `.sh`).
 3.  **File/Folder Analysis**: Use `run_terminal` with commands like `ls -R`, `cat`, `grep`, and `du` to understand the environment before acting.
 4.  **Multi-Step Logic**: If a task requires multiple steps (e.g., "analyze data and save report"), execute them sequentially using tools.
+5.  **Termux Remote**: You can execute commands on a remote Termux server using `run_remote_termux`.
 
 PLATFORM RULES (TERMUX):
 1.  **NO SUDO**: Always use `pkg install -y <package>` or `apt install -y`.
@@ -87,6 +88,7 @@ PLATFORM RULES (TERMUX):
 3.  **JSON ONLY**: Your responses must be strictly JSON.
 
 RESPONSE FORMAT (JSON ONLY):
+{ "action": "tool", "tool_name": "run_remote_termux", "args": "ls -la" }
 { "action": "tool", "tool_name": "create_file", "filename": "script.py", "content": "print('hello')" }
 { "action": "reply", "content": "I have analyzed the files and created the requested script." }
 """
@@ -105,6 +107,17 @@ def setup():
         console.print(Panel("NEXUS SETUP", style="bold white on blue"))
         state["api_key"] = Prompt.ask("Paste API Key")
         save_config()
+
+def setup_remote_termux():
+    console.clear()
+    console.print(Panel("[bold cyan]TERMUX REMOTE SETUP[/bold cyan]", style="cyan"))
+    server_url = Prompt.ask("Masukkan URL Server Termux (misal: http://ip-anda:8080)", default="http://localhost:8080")
+    save_to_memory("termux_server_url", server_url)
+    
+    console.print("\n[yellow]Gunakan script ini di Termux untuk menjalankan listener:[/yellow]")
+    from modules.remote import start_termux_listener
+    console.print(Panel(start_termux_listener(), title="Listener Script", style="green"))
+    input("\nTekan Enter untuk kembali ke menu...")
 
 def clean_json(text):
     text = text.strip()
@@ -153,9 +166,10 @@ def main_menu():
         console.print("  [cyan]1.[/cyan] Run AI (Chat Mode)")
         console.print("  [cyan]2.[/cyan] Set Model (Groq)")
         console.print("  [cyan]3.[/cyan] Set Theme (Color)")
-        console.print("  [cyan]4.[/cyan] Exit")
+        console.print("  [cyan]4.[/cyan] Termux Remote Setup")
+        console.print("  [cyan]5.[/cyan] Exit")
         
-        choice = Prompt.ask("\n[white]Pilih menu[/white]", choices=["1", "2", "3", "4"], default="1")
+        choice = Prompt.ask("\n[white]Pilih menu[/white]", choices=["1", "2", "3", "4", "5"], default="1")
         
         if choice == "1":
             run_chat()
@@ -177,6 +191,8 @@ def main_menu():
             console.print(f"[green]✔ Tema diatur ke: {state['theme']}[/green]")
             time.sleep(1)
         elif choice == "4":
+            setup_remote_termux()
+        elif choice == "5":
             break
 
 from core.brain import save_to_memory, get_from_memory, log_activity
@@ -235,6 +251,10 @@ def run_chat():
             if tool != "ask_choice": loader.start()
             
             if tool == "run_terminal": output = run_terminal_silent(response.get("args"), loader, auto_approve_flag)
+            elif tool == "run_remote_termux": 
+                from modules.remote import run_remote_command
+                server_url = get_from_memory("termux_server_url") or "http://localhost:8080"
+                output = run_remote_command(response.get("args"), server_url)
             elif tool == "create_file": output = create_file_silent(response.get("filename"), response.get("content"))
             elif tool == "ask_choice": output = ask_choice(response.get("question"), response.get("choices"), loader)
             elif tool == "google_search": output = google_search_tool(response.get("args"))
