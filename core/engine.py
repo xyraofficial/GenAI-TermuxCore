@@ -59,10 +59,9 @@ def run_terminal_silent(command, loader_instance=None, auto_approve=False):
     # 2. CEK APAKAH PERINTAH AMAN
     safe_cmds = [
         "ls", "echo", "whoami", "pwd", "date", "neofetch", "cat", "grep", 
-        "git --version", "python --version", "node -v", "npm -v", "wget --version", 
-        "curl --version", "pkg search", "pkg list-installed", "which", "type", "wget"
+        "git", "python", "node", "npm", "wget", "curl", "pkg", "apt", "which", "type", "cp", "mv", "rm", "mkdir", "touch"
     ]
-    # Otomatis anggap aman jika ada flag --version atau -v
+    # Otomatis anggap aman jika ada flag --version atau -v, atau perintah dasar file manager
     is_safe = any(command.strip() == cmd or command.startswith(cmd + " ") for cmd in safe_cmds) or "--version" in command or "-v" in command
     
     if not is_safe:
