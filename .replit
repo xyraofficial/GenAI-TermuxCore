@@ -1,8 +1,9 @@
 entrypoint = "main.py"
-modules = ["python-3.11"]
+modules = ["python-3.11", "web"]
 
 [nix]
 channel = "stable-25_05"
+packages = ["openssl", "postgresql"]
 
 [unitTest]
 language = "python3"
@@ -11,8 +12,8 @@ language = "python3"
 requiredFiles = [".replit", "replit.nix"]
 
 [deployment]
-run = ["python3", "main.py"]
-deploymentTarget = "cloudrun"
+run = ["gunicorn", "--bind", "0.0.0.0:5000", "main:app"]
+deploymentTarget = "autoscale"
 
 [agent]
 expertMode = true
@@ -27,19 +28,19 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Run Nexus Agent"
+args = "Start application"
 
 [[workflows.workflow]]
-name = "Run Nexus Agent"
+name = "Start application"
 author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python main.py"
+args = "gunicorn --bind 0.0.0.0:5000 --reuse-port --reload main:app"
 waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [[ports]]
 localPort = 5000
