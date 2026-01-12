@@ -55,18 +55,17 @@ You are NEXUS V27, a highly advanced Autonomous AI Agent.
 Your goal is to help the user by executing commands on their Termux device.
 
 CORE INSTRUCTIONS:
-1.  **Direct Execution**: If the user asks to "install", "remove", "update", or perform any system action, use the `run_terminal` tool IMMEDIATELY.
-2.  **No Hesitation**: Do not ask for permission if the intent is clear. Just do it.
+1.  **Interaction**: You MUST communicate with the user. If they ask for something, acknowledge it.
+2.  **Autonomous Operations**: Use the `run_terminal` tool to perform actions like installing, removing, or checking files.
 3.  **Termux Specifics**: 
     - Use `pkg install -y <pkg>` for installations.
     - Use `pkg uninstall -y <pkg>` for removals.
     - Always add `-y` to skip confirmation prompts.
-4.  **Verification**: After running an install/remove command, you may run a follow-up command like `which <pkg>` or `<pkg> --version` to verify success.
-5.  **Autonomous Power**: You have full control. If a tool is missing, install it. If a file needs to be deleted, delete it.
+4.  **Reporting**: After a tool finishes, summarize the result for the user.
 
 RESPONSE FORMAT (STRICT JSON):
 { "action": "tool", "tool_name": "run_terminal", "args": "pkg install -y wget" }
-{ "action": "reply", "content": "I have installed wget for you." }
+{ "action": "reply", "content": "Saya sedang menginstal wget untuk Anda..." }
 """
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(state["history"][-10:])
@@ -99,7 +98,7 @@ HTML_TEMPLATE = """
     <title>NEXUS AI REMOTE</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; padding: 20px; margin: 0; }
+        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; padding: 20px; margin: 0; overflow-x: hidden; }
         .container { max-width: 900px; margin: auto; }
         .header { text-align: center; border: 1px solid #0f0; padding: 10px; margin-bottom: 20px; box-shadow: 0 0 5px #0f0; }
         .terminal { border: 1px solid #0f0; padding: 15px; height: 500px; overflow: auto; background: #050505; margin-bottom: 15px; box-shadow: 0 0 10px #0f0; font-size: 14px; }
@@ -109,23 +108,25 @@ HTML_TEMPLATE = """
         .prompt { color: #0f0; font-weight: bold; }
         .user-msg { color: #0af; margin-top: 10px; }
         .ai-msg { color: #0f0; margin-top: 5px; }
-        .tool-msg { color: #fa0; font-style: italic; margin-left: 10px; }
-        .output { color: #fff; white-space: pre-wrap; margin: 5px 0 15px 20px; font-size: 12px; opacity: 0.8; }
+        .loading { display: inline-block; margin-left: 10px; color: #fa0; animation: blink 1s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+        .status-tag { color: #fa0; font-weight: bold; margin-right: 5px; }
+        .success-tag { color: #0f0; }
+        .error-tag { color: #f00; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h2 style="margin:0;">NEXUS V27 - AI AUTONOMOUS REMOTE</h2>
-            <div style="font-size:12px; margin-top:5px;">AI-Powered Command Execution for Termux</div>
+            <h2 style="margin:0;">NEXUS V27 - AI REMOTE</h2>
+            <div style="font-size:12px; margin-top:5px;">Professional Termux Assistant</div>
         </div>
         <div class="terminal" id="out">
-            <div>[SYSTEM] Nexus AI Engine Started.</div>
-            <div>[SYSTEM] Ready for Autonomous Operations.</div>
+            <div>[SYSTEM] Nexus AI Engine Ready.</div>
         </div>
         <div class="input-area">
             <span class="prompt">❯</span>
-            <input type="text" id="cmd" placeholder="Tanya AI atau berikan perintah..." onkeypress="if(event.key === 'Enter') send()">
+            <input type="text" id="cmd" placeholder="Tanya sesuatu..." onkeypress="if(event.key === 'Enter') send()">
             <button onclick="send()">SEND</button>
         </div>
     </div>
@@ -134,13 +135,22 @@ HTML_TEMPLATE = """
         const out = document.getElementById('out');
         const cmdInput = document.getElementById('cmd');
 
+        function appendMsg(html) {
+            const div = document.createElement('div');
+            div.innerHTML = html;
+            out.appendChild(div);
+            out.scrollTop = out.scrollHeight;
+            return div;
+        }
+
         async function send() {
             const val = cmdInput.value.trim();
             if (!val) return;
             
-            out.innerHTML += `<div class="user-msg"><span class="prompt">USER ❯</span> ${val}</div>`;
+            appendMsg(`<div class="user-msg"><span class="prompt">USER ❯</span> ${val}</div>`);
             cmdInput.value = '';
-            out.scrollTop = out.scrollHeight;
+            
+            const loader = appendMsg(`<div class="ai-msg"><span class="prompt">NEXUS ❯</span> <span class="loading">AI WORKING...</span></div>`);
             
             try {
                 const res = await fetch('/chat', {
@@ -149,20 +159,16 @@ HTML_TEMPLATE = """
                     body: JSON.stringify({message: val})
                 });
                 const data = await res.json();
-                handleResponse(data);
+                loader.remove();
+                
+                if (data.replies) {
+                    data.replies.forEach(reply => {
+                        appendMsg(`<div class="ai-msg"><span class="prompt">NEXUS ❯</span> ${reply}</div>`);
+                    });
+                }
             } catch (err) {
-                out.innerHTML += `<div style="color:red">Error: ${err.message}</div>`;
+                loader.innerHTML = `<div style="color:red">Error: ${err.message}</div>`;
             }
-        }
-
-        function handleResponse(data) {
-            if (data.content) {
-                out.innerHTML += `<div class="ai-msg"><span class="prompt">NEXUS ❯</span> ${data.content}</div>`;
-            }
-            if (data.tool_output) {
-                out.innerHTML += `<div class="tool-msg">Tool Output:</div><div class="output">${data.tool_output}</div>`;
-            }
-            out.scrollTop = out.scrollHeight;
         }
     </script>
 </body>
@@ -177,14 +183,11 @@ def index():
 def chat():
     data = request.get_json()
     user_msg = data.get("message")
-    
     state["history"].append({"role": "user", "content": user_msg})
     
-    # AI Loop for tools
     current_output = None
-    final_reply = ""
+    replies = []
     
-    # Increase loops to 5 for better multi-step autonomy
     for _ in range(5):
         ai_res_raw = query_ai(user_msg, tool_output=current_output)
         try:
@@ -196,28 +199,28 @@ def chat():
             tool_name = res.get("tool_name")
             args = res.get("args")
             
+            if res.get("content"):
+                replies.append(res.get("content"))
+                
             if tool_name == "run_terminal":
                 try:
-                    # Execute in shell with -y automatically appended if needed
                     if ("pkg install" in args or "pkg remove" in args) and "-y" not in args:
                         args += " -y"
                     proc = subprocess.run(args, shell=True, text=True, capture_output=True)
                     current_output = proc.stdout + proc.stderr
                     if not current_output.strip():
-                        current_output = "[Success - No Output]"
+                        current_output = "[Success]"
                 except Exception as e:
                     current_output = f"Error: {str(e)}"
             
             state["history"].append({"role": "assistant", "content": ai_res_raw})
         else:
-            final_reply = res.get("content", "")
+            if res.get("content"):
+                replies.append(res.get("content"))
             state["history"].append({"role": "assistant", "content": ai_res_raw})
             break
             
-    return jsonify({
-        "content": final_reply,
-        "tool_output": current_output
-    })
+    return jsonify({"replies": replies})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
