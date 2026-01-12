@@ -98,6 +98,17 @@ def load_config():
         try:
             with open(CONFIG_FILE, 'r') as f: state["api_key"] = json.load(f).get("api_key", "")
         except: pass
+    
+    # Auto-set Termux server URL if not set
+    if not get_from_memory("termux_server_url"):
+        try:
+            import subprocess
+            domain = subprocess.check_output("env | grep REPL_SLUG | cut -d'=' -f2", shell=True).decode().strip()
+            user = subprocess.check_output("env | grep REPL_OWNER | cut -d'=' -f2", shell=True).decode().strip()
+            url = f"https://{domain}.{user}.replit.app"
+            save_to_memory("termux_server_url", url)
+        except:
+            pass
 
 def save_config():
     with open(CONFIG_FILE, 'w') as f: json.dump({"api_key": state["api_key"]}, f)
@@ -117,14 +128,13 @@ def setup_remote_termux():
     try:
         domain = subprocess.check_output("env | grep REPL_SLUG | cut -d'=' -f2", shell=True).decode().strip()
         user = subprocess.check_output("env | grep REPL_OWNER | cut -d'=' -f2", shell=True).decode().strip()
-        default_url = f"https://{domain}.{user}.repl.co"
+        server_url = f"https://{domain}.{user}.replit.app"
     except:
-        default_url = "http://localhost:5000"
+        server_url = "http://localhost:5000"
 
-    server_url = Prompt.ask("Masukkan URL Server Termux", default=default_url)
     save_to_memory("termux_server_url", server_url)
     
-    console.print(f"\n[green]✔ Server URL diatur ke: {server_url}[/green]")
+    console.print(f"\n[green]✔ Server URL otomatis diatur ke: {server_url}[/green]")
     console.print("\n[yellow]Server sekarang berjalan otomatis di background Replit.[/yellow]")
     input("\nTekan Enter untuk kembali ke menu...")
 
