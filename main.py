@@ -91,10 +91,22 @@ def query_ai(user_input, tool_output=None):
     except Exception as e: 
         return json.dumps({"action": "reply", "content": f"AI Error: {str(e)}"})
 
+from core.monitor import get_termux_status
+
 def main_menu():
     while True:
         console.clear()
         show_header()
+        
+        # Status Monitor UI
+        status = get_termux_status()
+        status_table = Table(box=box.MINIMAL, expand=True, border_style="dim")
+        status_table.add_column("Battery", justify="center", style="green")
+        status_table.add_column("Storage", justify="center", style="yellow")
+        status_table.add_column("Network", justify="center", style="blue")
+        status_table.add_row(status["battery"], status["storage"], status["network"])
+        console.print(status_table)
+        
         console.print(Panel("[bold white]NEXUS MAIN MENU[/bold white]", style="bold blue", box=box.DOUBLE))
         console.print("  [cyan]1.[/cyan] Run AI (Chat Mode)")
         console.print("  [cyan]2.[/cyan] Set Model (Groq)")
