@@ -28,11 +28,15 @@ state = {
 }
 
 def load_config():
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, 'r') as f:
-                state["api_key"] = json.load(f).get("api_key", "")
-        except: pass
+    # Mengambil API key langsung dari environment variable Replit (Secret)
+    state["api_key"] = os.environ.get("GROQ_API_KEY", "")
+    if not state["api_key"]:
+        # Fallback ke file config jika secret tidak ada
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, 'r') as f:
+                    state["api_key"] = json.load(f).get("api_key", "")
+            except: pass
 
 load_config()
 
