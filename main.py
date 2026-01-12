@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, render_template_string
+from werkzeug.middleware.proxy_fix import ProxyFix
 import subprocess
 import os
 import sys
@@ -13,6 +14,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET")
+# Fix for HTTPS and correct host headers behind Replit proxy
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 console = Console()
 
 # --- CONFIGURATION ---
