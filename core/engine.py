@@ -24,10 +24,21 @@ def show_header():
 def sanitize_command(command):
     original = command
     command = command.replace("sudo ", "")
+    
+    # Tambahkan flag -y secara otomatis untuk pkg dan apt agar tidak nyangkut di prompt [Y/n]
+    if "pkg install" in command and "-y" not in command:
+        command = command.replace("pkg install", "pkg install -y")
+    if "apt install" in command and "-y" not in command:
+        command = command.replace("apt install", "apt install -y")
+    if "apt-get install" in command and "-y" not in command:
+        command = command.replace("apt-get install", "apt-get install -y")
+        
     command = command.replace("apt-get install", "pkg install")
     command = command.replace("apt install", "pkg install")
+    
     if original != command:
         console.print(f"[dim yellow]⚠ Auto-Fix: Mengubah '{original}' menjadi '{command}' (Termux Friendly)[/dim yellow]")
+    
     return command
 
 def run_terminal_silent(command, loader_instance=None, auto_approve=False):
