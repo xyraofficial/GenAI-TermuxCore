@@ -5,6 +5,23 @@ import re
 import requests
 import threading
 import time
+import subprocess
+
+# --- AUTO INSTALL DEPS ---
+def check_dependencies():
+    required = ["rich", "requests", "googlesearch-python"]
+    for pkg in required:
+        try:
+            if pkg == "googlesearch-python":
+                import googlesearch
+            else:
+                __import__(pkg)
+        except ImportError:
+            print(f"[*] Installing dependency: {pkg}...")
+            subprocess.run([sys.executable, "-m", "pip", "install", pkg], check=True)
+
+check_dependencies()
+
 from core.engine import (
     show_header, run_terminal_silent, create_file_silent, 
     ask_choice, console
