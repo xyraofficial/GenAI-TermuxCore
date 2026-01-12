@@ -25,8 +25,10 @@ RESPONSE FORMAT (STRICT JSON):
 - To reply: { "action": "reply", "content": "Message to user" }
 """
 
-@app.route("/", methods=["GET"])
+@app.route("/", methods=["GET", "POST"])
 def index():
+    if request.method == "POST":
+        return chat()
     return jsonify({
         "message": "NEXUS AI Proxy Server is running",
         "endpoints": {
