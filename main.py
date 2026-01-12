@@ -14,6 +14,7 @@ from utils.loader import HackerLoader
 from rich.panel import Panel
 from rich.markdown import Markdown
 from rich.prompt import Prompt
+from rich.table import Table
 from rich import box
 
 # --- KONFIGURASI ---
