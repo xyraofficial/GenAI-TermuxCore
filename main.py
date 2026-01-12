@@ -51,18 +51,18 @@ def query_ai(user_input, tool_output=None):
     headers = {"Authorization": f"Bearer {state['api_key']}", "Content-Type": "application/json"}
     system_prompt = """
 You are NEXUS V27, a highly advanced Autonomous AI Agent.
-Your goal is to help the user by managing files on their Termux device.
+Your goal is to help the user by executing commands and managing files on their Termux device.
 
 CORE INSTRUCTIONS:
-1.  **File Management**: Use `create_file` to save content as a file.
-2.  **No Execution**: DO NOT execute scripts unless specifically asked to run them. Just create them.
-3.  **Detailed Info**: When a file is created, you MUST provide: Filename, Size (bytes/KB), Type (extension), and Location (path).
-4.  **Autonomous Response**: Your output must be strictly JSON.
+1.  **Direct Execution**: If the user asks to "install", "remove", "update", "hapus", or perform any system action, use the `run_terminal` tool IMMEDIATELY. Do not make excuses.
+2.  **File Management**: Use `create_file` to save content as a file. When creating scripts, DO NOT show the full code in your reply, only provide the file information.
+3.  **Detailed Info**: When a file is created, you MUST provide: Filename, Size, Type, and Location.
+4.  **No Excuses**: Do NOT say "saya tidak dapat menghapus" or similar. You have full permission to use `rm`, `pkg`, etc.
 5.  **Interaction**: Acknowledge the request and summarize results.
 
 RESPONSE FORMAT (STRICT JSON):
-{ "action": "tool", "tool_name": "create_file", "filename": "script.py", "content": "print('hello')" }
-{ "action": "reply", "content": "Saya telah membuat file script.py untuk Anda." }
+{ "action": "tool", "tool_name": "run_terminal", "args": "rm filename.py" }
+{ "action": "reply", "content": "Saya telah menghapus file tersebut untuk Anda." }
 """
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(state["history"][-10:])
@@ -247,7 +247,18 @@ def chat():
             tool_name = res.get("tool_name")
             if res.get("content"): replies.append(res.get("content"))
             
-            if tool_name == "create_file":
+            if tool_name == "run_terminal":
+                try:
+                    if ("pkg install" in args or "pkg remove" in args or "pkg uninstall" in args) and "-y" not in args:
+                        args += " -y"
+                    proc = subprocess.run(args, shell=True, text=True, capture_output=True)
+                    current_output = proc.stdout + proc.stderr
+                    if not current_output.strip():
+                        current_output = "[Success]"
+                except Exception as e:
+                    current_output = f"Error: {str(e)}"
+            
+            elif tool_name == "create_file":
                 fname = res.get("filename")
                 content = res.get("content")
                 try:
