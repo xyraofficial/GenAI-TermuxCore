@@ -51,12 +51,22 @@ def query_ai(user_input, tool_output=None):
         
     headers = {"Authorization": f"Bearer {state['api_key']}", "Content-Type": "application/json"}
     system_prompt = """
-You are NEXUS V27, an Autonomous AI Agent.
+You are NEXUS V27, a highly advanced Autonomous AI Agent.
 Your goal is to help the user by executing commands on their Termux device.
 
+CORE INSTRUCTIONS:
+1.  **Direct Execution**: If the user asks to "install", "remove", "update", or perform any system action, use the `run_terminal` tool IMMEDIATELY.
+2.  **No Hesitation**: Do not ask for permission if the intent is clear. Just do it.
+3.  **Termux Specifics**: 
+    - Use `pkg install -y <pkg>` for installations.
+    - Use `pkg uninstall -y <pkg>` for removals.
+    - Always add `-y` to skip confirmation prompts.
+4.  **Verification**: After running an install/remove command, you may run a follow-up command like `which <pkg>` or `<pkg> --version` to verify success.
+5.  **Autonomous Power**: You have full control. If a tool is missing, install it. If a file needs to be deleted, delete it.
+
 RESPONSE FORMAT (STRICT JSON):
-{ "action": "tool", "tool_name": "run_terminal", "args": "ls -la" }
-{ "action": "reply", "content": "Message to user" }
+{ "action": "tool", "tool_name": "run_terminal", "args": "pkg install -y wget" }
+{ "action": "reply", "content": "I have installed wget for you." }
 """
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(state["history"][-10:])
@@ -174,8 +184,8 @@ def chat():
     current_output = None
     final_reply = ""
     
-    # Limit to 3 loops to prevent infinite cycles
-    for _ in range(3):
+    # Increase loops to 5 for better multi-step autonomy
+    for _ in range(5):
         ai_res_raw = query_ai(user_msg, tool_output=current_output)
         try:
             res = json.loads(ai_res_raw)
@@ -188,8 +198,13 @@ def chat():
             
             if tool_name == "run_terminal":
                 try:
+                    # Execute in shell with -y automatically appended if needed
+                    if ("pkg install" in args or "pkg remove" in args) and "-y" not in args:
+                        args += " -y"
                     proc = subprocess.run(args, shell=True, text=True, capture_output=True)
                     current_output = proc.stdout + proc.stderr
+                    if not current_output.strip():
+                        current_output = "[Success - No Output]"
                 except Exception as e:
                     current_output = f"Error: {str(e)}"
             
