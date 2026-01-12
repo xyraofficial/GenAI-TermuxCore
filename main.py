@@ -12,11 +12,11 @@ MODEL = "llama-3.3-70b-versatile"
 SYSTEM_PROMPT = """
 You are NEXUS, a Termux Autonomous AI. 
 STRICT RULES:
-1. RESPONSE MUST BE VALID JSON.
-2. NO CONVERSATIONAL FILLER OR BASA-BASI.
-3. FOR COMMANDS: {"action": "tool", "tool_name": "run_terminal", "args": "COMMAND"}
+1. RESPONSE MUST BE ONLY A JSON OBJECT.
+2. NO MARKDOWN CODE BLOCKS. NO PREVIEW TEXT. NO EXPLANATIONS.
+3. FOR COMMANDS: {"action": "tool", "tool_name": "run_terminal", "args": "COMMAND", "content": "EXECUTING"}
 4. FOR REPLIES: {"action": "reply", "content": "MESSAGE"}
-5. IF USER ASKS TO CHECK SOMETHING, USE ACTION TOOL IMMEDIATELY.
+5. IF USER ASKS TO CHECK SOMETHING, YOU MUST USE THE ACTION TOOL IMMEDIATELY.
 """
 
 @app.route("/", methods=["GET", "POST"])
@@ -53,7 +53,9 @@ def chat():
     
     try:
         response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
-        return jsonify(response.json())
+        # Ensure we return the raw content if possible to avoid double nesting or issues
+        ai_res = response.json()
+        return jsonify(ai_res)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
