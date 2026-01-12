@@ -61,6 +61,8 @@ CAPABILITIES & CONSTRAINTS:
 4.  **No Immediate Execution**: Create scripts but do not run them in the same turn unless explicitly requested.
 5.  **Direct Tool Use**: Use `run_terminal` IMMEDIATELY to gather data or perform actions.
 6.  **Response Format**: You MUST respond in valid JSON format.
+7.  **Auto-Confirm**: Always use the `-y` flag for package managers (e.g., `pkg install -y wget`) to avoid interactive prompts.
+8.  **Proactive Assistance**: If a user asks how to install a package (e.g., "Cara install wget"), explain the steps clearly and ALWAYS ask at the end if they want you to install it for them automatically.
 
 RESPONSE FORMAT (STRICT JSON):
 { "action": "tool", "tool_name": "run_terminal", "args": "termux-toast 'Hello from Nexus'" }
@@ -280,6 +282,7 @@ HTML_TEMPLATE = """
         #send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
         .loading-dots { display: flex; gap: 4px; padding: 4px 0; }
+        .status-msg { font-size: 12px; font-style: italic; color: var(--accent-color); margin-bottom: 4px; font-family: monospace; }
         .dot { width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: pulse 1.4s infinite; opacity: 0.4; }
         .dot:nth-child(2) { animation-delay: 0.2s; }
         .dot:nth-child(3) { animation-delay: 0.4s; }
@@ -363,9 +366,19 @@ HTML_TEMPLATE = """
             
             const loading = document.createElement('div');
             loading.className = 'message ai-message';
-            loading.innerHTML = '<div class="loading-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+            loading.innerHTML = '<div class="status-msg" id="status-anim">Analyzing...</div><div class="loading-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
             chatContainer.appendChild(loading);
             chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            const statusAnim = document.getElementById('status-anim');
+            const statuses = ["Analyzing...", "Working...", "Creating files...", "Finalizing..."];
+            let sIdx = 0;
+            const interval = setInterval(() => {
+                if (sIdx < statuses.length - 1) {
+                    sIdx++;
+                    statusAnim.textContent = statuses[sIdx];
+                }
+            }, 800);
 
             try {
                 const res = await fetch('/chat', {
@@ -374,6 +387,7 @@ HTML_TEMPLATE = """
                     body: JSON.stringify({message: text})
                 });
                 const data = await res.json();
+                clearInterval(interval);
                 loading.remove();
                 
                 if (data.replies) {
@@ -383,6 +397,7 @@ HTML_TEMPLATE = """
                     });
                 }
             } catch (err) {
+                clearInterval(interval);
                 loading.remove();
                 addMessage('Gagal menghubungi AI.', false);
             }
