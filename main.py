@@ -98,6 +98,10 @@ def load_config():
         try:
             with open(CONFIG_FILE, 'r') as f: state["api_key"] = json.load(f).get("api_key", "")
         except: pass
+    
+    # Auto-set Termux server URL to localhost if not set
+    if not get_from_memory("termux_server_url"):
+        save_to_memory("termux_server_url", "http://localhost:8080")
 
 def save_config():
     with open(CONFIG_FILE, 'w') as f: json.dump({"api_key": state["api_key"]}, f)
