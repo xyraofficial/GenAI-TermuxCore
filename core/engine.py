@@ -40,8 +40,15 @@ def run_terminal_silent(command, loader_instance=None, auto_approve=False):
     if "input(" in command or "read " in command:
         return "###INTERACTIVE_STOP### Script butuh input manual."
     command = sanitize_command(command)
-    safe_cmds = ["ls", "echo", "whoami", "pwd", "date", "neofetch", "cat", "grep", "git --version"]
+    
+    # 2. CEK APAKAH PERINTAH AMAN
+    safe_cmds = [
+        "ls", "echo", "whoami", "pwd", "date", "neofetch", "cat", "grep", 
+        "git --version", "python --version", "node -v", "npm -v", "wget --version", 
+        "curl --version", "pkg search", "pkg list-installed", "which", "type"
+    ]
     is_safe = any(command.startswith(cmd) for cmd in safe_cmds) or "--version" in command or "-v" in command
+    
     if not is_safe:
         if not auto_approve:
             if loader_instance: loader_instance.stop()
@@ -54,10 +61,17 @@ def run_terminal_silent(command, loader_instance=None, auto_approve=False):
             console.print(f"[bold green]⚡ Auto-Execute:[/bold green] [dim]{command}[/dim]")
             if loader_instance: loader_instance.start()
     try:
-        result = subprocess.run(command, shell=True, text=True, capture_output=True)
+        # Gunakan bash jika tersedia, fallback ke default shell
+        executable = "/data/data/com.termux/files/usr/bin/bash" if os.path.exists("/data/data/com.termux/files/usr/bin/bash") else None
+        result = subprocess.run(command, shell=True, text=True, capture_output=True, executable=executable)
         full_output = result.stdout + result.stderr
+        
+        if result.returncode != 0 and not full_output.strip():
+            full_output = f"Error: Command exited with code {result.returncode}"
+            
         if "command not found" in full_output or "No such file" in full_output:
-             full_output += "\n[SYSTEM NOTE]: Perintah gagal/tidak ditemukan."
+             full_output += "\n[SYSTEM NOTE]: Perintah gagal/tidak ditemukan. Paket mungkin belum terinstall."
+             
         return full_output if full_output.strip() else "[Success (No Output)]"
     except Exception as e:
         return f"Error: {str(e)}"
