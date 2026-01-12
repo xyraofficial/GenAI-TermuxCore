@@ -12,6 +12,7 @@ from rich.console import Console
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SESSION_SECRET")
 console = Console()
 
 # --- CONFIGURATION ---
