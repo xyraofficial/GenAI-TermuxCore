@@ -98,9 +98,9 @@ def main_menu():
         if choice == "1":
             run_chat()
         elif choice == "2":
-            # Daftar model yang biasanya stabil untuk Groq Free Tier
-            models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]
-            console.print("\n[bold yellow]Daftar Model Tersedia (Free Tier):[/bold yellow]")
+            # Daftar model yang diinginkan pengguna
+            models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+            console.print("\n[bold yellow]Daftar Model Tersedia:[/bold yellow]")
             for i, m in enumerate(models, 1): console.print(f"  [cyan]{i}.[/cyan] {m}")
             m_idx = Prompt.ask("\nPilih model", choices=[str(i) for i in range(1, len(models)+1)], default="1")
             state["model"] = models[int(m_idx)-1]
