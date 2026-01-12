@@ -125,6 +125,8 @@ def main_menu():
         elif choice == "4":
             break
 
+from core.brain import save_to_memory, get_from_memory, log_activity
+
 def run_chat():
     console.clear()
     show_header()
@@ -141,7 +143,12 @@ def run_chat():
         if user_input.lower() in ["exit", "quit"]: sys.exit()
         if not user_input.strip(): continue
         
-        # Tetap dukung perintah set langsung jika user mau
+        log_activity(f"USER: {user_input}")
+        
+        # Simpan ke memori jika user meminta mengingat sesuatu
+        if "ingat" in user_input.lower() or "remember" in user_input.lower():
+            save_to_memory("last_note", user_input)
+            console.print("[dim green]🧠 Nexus Brain: Informasi disimpan ke memori lokal.[/dim green]")
         if user_input.lower().startswith("set model "):
             new_model = user_input.split(" ")[-1]
             state["model"] = new_model
