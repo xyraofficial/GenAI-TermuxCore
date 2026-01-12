@@ -37,8 +37,11 @@ def index():
         }
     })
 
-@app.route("/chat", methods=["POST"])
+@app.route("/chat", methods=["GET", "POST"])
 def chat():
+    if request.method == "GET":
+        return jsonify({"message": "Use POST to send chat messages"}), 405
+        
     if not API_KEY:
         return jsonify({"error": "GROQ_API_KEY not configured on server"}), 500
     
