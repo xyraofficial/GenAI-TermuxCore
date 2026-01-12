@@ -3,8 +3,9 @@ import json
 import subprocess
 import sys
 
-# Konfigurasi: Ganti URL ini dengan URL Replit Anda
-PROXY_URL = "https://workspace-bunaj21.replit.app/chat"
+# Konfigurasi: URL Replit Anda
+# Pastikan URL ini sesuai dengan URL yang tampil di browser Replit
+PROXY_URL = "https://gen-ai-termux-core--bunaj21.replit.app/chat"
 
 def query_proxy(messages):
     payload = {
@@ -31,6 +32,7 @@ def execute_command(command):
 
 def main():
     print("--- NEXUS Termux Autonomous Client (via Replit Proxy) ---")
+    print(f"Target Proxy: {PROXY_URL}")
     print("Ketik 'exit' untuk keluar.\n")
     
     history = []
