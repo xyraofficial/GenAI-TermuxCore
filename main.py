@@ -31,7 +31,9 @@ PLATFORM RULES (TERMUX):
 1. NO SUDO
 2. CHECK FIRST
 3. Identity: Kz.tutorial & XyraOfficial
-RESPONSE FORMAT (JSON ONLY)
+RESPONSE FORMAT (JSON ONLY):
+Type 1: { "action": "tool", "tool_name": "run_terminal", "args": "wget --version" }
+Type 2: { "action": "reply", "content": "Wget belum terinstall. Mau saya installkan?" }
 """
 
 def load_config():
@@ -79,8 +81,11 @@ def main():
         raw_res = query_ai(user_input)
         loader.stop()
         
-        try: response = json.loads(raw_res)
-        except: response = {"action": "reply", "content": raw_res}
+        try: 
+            response = json.loads(raw_res)
+        except Exception as e: 
+            console.print(f"[dim red]Debug: AI Response is not valid JSON. Content: {raw_res}[/dim red]")
+            response = {"action": "reply", "content": raw_res}
 
         if response.get("action") == "tool":
             tool = response.get("tool_name")
@@ -100,8 +105,11 @@ def main():
             loader.start()
             final_raw = query_ai(user_input, tool_output=output)
             loader.stop()
-            try: final = json.loads(final_raw)
-            except: final = {"action": "reply", "content": final_raw}
+            try: 
+                final = json.loads(final_raw)
+            except Exception as e: 
+                console.print(f"[dim red]Debug: Final AI Response is not valid JSON. Content: {final_raw}[/dim red]")
+                final = {"action": "reply", "content": final_raw}
             
             if "content" in final:
                 console.print(Panel(Markdown(final["content"]), title="NEXUS", border_style="cyan"))
